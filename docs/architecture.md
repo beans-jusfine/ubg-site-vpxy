@@ -15,7 +15,7 @@ NERO's existing Wisp service is `wss://ubg-site-wisp.onrender.com/wisp/`. It is 
 
 VanillaPXY currently wraps target WebSockets by opening `/ws?url=...` against its own HTTP backend. Its runtime forwards an optional `server` query parameter, but the upstream HTTP server does not use that parameter to route `/ws` to a remote Wisp server. Merely adding the Wisp URL to the query therefore does not make VanillaPXY use NERO's Wisp server.
 
-To share NERO Wisp correctly, the browser runtime needs a compatible Wisp client transport implementation and must route proxied WebSocket/TCP traffic through it. The HTTP rewrite/fetch backend remains required unless separately ported to another backend platform.
+To share NERO Wisp, the browser runtime uses the `@mercuryworkshop/epoxy-tls` client. It loads the bundled client from `/epoxy/epoxy-bundled.js`, connects to the Wisp URL passed in the `server` query parameter, and routes proxied WebSocket connections through TLS-over-Wisp. The Node HTTP rewrite/fetch backend remains responsible for initial page loads and ordinary HTTP requests.
 
 ## Deployment
 
@@ -26,12 +26,12 @@ The VanillaPXY Node backend requires a Node runtime (upstream specifies Node 24.
 - Keep private-IP and DNS-rebinding protections enabled for public deployments.
 - Preserve upstream target validation and redirect validation.
 - Keep NERO's Scramjet engine as the default and avoid changing production.
-- Confirm the Wisp client/server protocol version against the deployed NERO Wisp service before switching WebSocket traffic.
+- Confirm the deployed NERO Wisp service supports Wisp v2 before enabling the adapter in NERO DEV; keep the local `/ws` route as a fallback when no relay URL is supplied.
 - Test cookies, redirects, service workers, workers, WebSockets, streaming responses, login flows, and ChromeOS performance in DEV.
 
-## Next implementation step
+## Adapter implementation status
 
-Implement a selectable Wisp client adapter for VanillaPXY and make the relay URL configurable from NERO. Keep the existing `/ws` path as a fallback until the shared-Wisp adapter passes tests.
+The TLS-over-Wisp WebSocket adapter is implemented in the browser runtime. NERO supplies its configured Wisp URL as the `server` query parameter. The adapter is not production-verified until WebSocket echo, Discord, and other real-site flows are tested from NERO DEV on ChromeOS.
 
 ## Render service configuration
 

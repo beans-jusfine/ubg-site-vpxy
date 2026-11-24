@@ -1,4 +1,6 @@
 import http from "node:http";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { request } from "undici";
 import { WebSocketServer, WebSocket } from "ws";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
@@ -20,6 +22,8 @@ const maxWebSocketPayload = Number(process.env.MAX_WS_PAYLOAD) || 16 * 1024 * 10
 const allowPrivate = process.env.ALLOW_PRIVATE_TARGETS === "true";
 const rewriteEnabled = process.env.REWRITE !== "false";
 const endpoint = process.env.PROXY_ENDPOINT || "/vanillia?url=";
+const epoxyBundlePath = fileURLToPath(import.meta.resolve("@mercuryworkshop/epoxy-tls/epoxy-bundled"));
+const epoxyBundle = await readFile(epoxyBundlePath);
 const wispPath = process.env.WISP_PATH || "/wisp/";
 
 wisp.options.allow_private_ips = allowPrivate;
@@ -93,6 +97,8 @@ function proxiedRedirect(location, base, req) {
   const destination = new URL(endpoint, proxyOrigin(req));
   destination.searchParams.set("url", absolute.href);
   const requestUrl = new URL(req.url, proxyOrigin(req));
+  const relayServer = requestUrl.searchParams.get("server");
+  if (relayServer) destination.searchParams.set("server", relayServer);
   const redirects = Number(requestUrl.searchParams.get("__vanillia_redirects")) || 0;
   if (redirects < maxRedirects) destination.searchParams.set("__vanillia_redirects", String(redirects + 1));
   return destination.href;
@@ -200,6 +206,16 @@ function handleWebSocket(req, socket, head) {
 
 async function handleRequest(req, res) {
   const url = new URL(req.url, "http://localhost");
+  if (url.pathname === "/epoxy/epoxy-bundled.js") {
+    res.writeHead(200, {
+      "content-type": "text/javascript; charset=utf-8",
+      "cache-control": "public, max-age=31536000, immutable",
+      "access-control-allow-origin": "*",
+      "x-robots-tag": "noindex, nofollow, noarchive"
+    });
+    res.end(epoxyBundle);
+    return;
+  }
   if (url.pathname === "/health") {
     res.writeHead(200, {
       "content-type": "application/json; charset=utf-8",

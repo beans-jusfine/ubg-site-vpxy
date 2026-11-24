@@ -655,23 +655,151 @@ const runtimeSource = String.raw`(() => {
     };
   }
   if (nativeWebSocket) {
-    globalThis.WebSocket = class extends nativeWebSocket {
-      constructor(url, protocols) {
-        const value = String(url);
-        let next = value;
-        try {
-          const resolved = new URL(value, base);
-          if (/^wss?:$/.test(resolved.protocol)) {
-            const target = resolved.protocol === "wss:" ? "https:" : "http:";
-            const httpTarget = target + "//" + resolved.host + resolved.pathname + resolved.search;
-            const socket = new URL("/ws?url=" + encodeURIComponent(httpTarget), location.origin);
-            if (relayServer) socket.searchParams.set("server", relayServer);
-            next = socket.href;
+    if (relayServer && globalThis.EventTarget) {
+      let relayClientPromise = null;
+      const getRelayClient = () => {
+        if (!relayClientPromise) {
+          relayClientPromise = import(new URL("/epoxy/epoxy-bundled.js", location.origin).href).then(async epoxy => {
+            if (typeof epoxy.default === "function") await epoxy.default();
+            const options = new epoxy.EpoxyClientOptions();
+            options.user_agent = navigator.userAgent;
+            options.wisp_v2 = true;
+            options.udp_extension_required = false;
+            const client = new epoxy.EpoxyClient(relayServer, options);
+            await client.replace_stream_provider();
+            return { epoxy, client };
+          });
+        }
+        return relayClientPromise;
+      };
+      class VanilliaWispSocket extends EventTarget {
+        constructor(url, protocols = []) {
+          super();
+          const resolved = new URL(String(url), base);
+          if (!/^wss?:$/.test(resolved.protocol)) throw new DOMException("WebSocket URL must use ws:// or wss://", "SyntaxError");
+          this.url = resolved.href;
+          this.protocol = Array.isArray(protocols) ? (protocols[0] || "") : (protocols || "");
+          this.extensions = "";
+          this.binaryType = "blob";
+          this.bufferedAmount = 0;
+          this.readyState = 0;
+          this.CONNECTING = 0;
+          this.OPEN = 1;
+          this.CLOSING = 2;
+          this.CLOSED = 3;
+          this.onopen = null;
+          this.onmessage = null;
+          this.onerror = null;
+          this.onclose = null;
+          this._socket = null;
+          this._closed = false;
+          this._closeEventSent = false;
+          this._protocols = Array.isArray(protocols) ? protocols : (protocols ? [protocols] : []);
+          this._connect();
+        }
+        _emit(type, event) {
+          const emitted = event || new Event(type);
+          try { this.dispatchEvent(emitted); } catch {}
+          const handler = this["on" + type];
+          if (typeof handler === "function") {
+            try { handler.call(this, emitted); } catch (error) { setTimeout(() => { throw error; }); }
           }
-        } catch {}
-        super(next, protocols);
+        }
+        _finishClose(code = 1000, reason = "", wasClean = true) {
+          if (this._closeEventSent) return;
+          this._closeEventSent = true;
+          this._closed = true;
+          this.readyState = 3;
+          const event = typeof CloseEvent === "function"
+            ? new CloseEvent("close", { code, reason, wasClean })
+            : new Event("close");
+          this._emit("close", event);
+        }
+        async _connect() {
+          try {
+            const { epoxy, client } = await getRelayClient();
+            if (this._closed) return;
+            const handlers = new epoxy.EpoxyHandlers(
+              () => {
+                if (this._closed) return;
+                this.readyState = 1;
+                this._emit("open", new Event("open"));
+              },
+              () => this._finishClose(1000, "", true),
+              error => {
+                if (this.readyState === 3) return;
+                const event = typeof ErrorEvent === "function"
+                  ? new ErrorEvent("error", { message: String(error?.message || error || "WebSocket error"), error })
+                  : new Event("error");
+                this._emit("error", event);
+              },
+              data => {
+                let value = data;
+                if (data instanceof Uint8Array) {
+                  value = this.binaryType === "arraybuffer"
+                    ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+                    : new Blob([data]);
+                }
+                this._emit("message", new MessageEvent("message", { data: value }));
+              }
+            );
+            this._socket = await client.connect_websocket(handlers, this.url, this._protocols, {});
+            if (this._closed && this._socket) await this._socket.close(1000, "");
+          } catch (error) {
+            if (this.readyState === 3) return;
+            const event = typeof ErrorEvent === "function"
+              ? new ErrorEvent("error", { message: String(error?.message || error || "Wisp connection failed"), error })
+              : new Event("error");
+            this._emit("error", event);
+            this._finishClose(1006, "Wisp connection failed", false);
+          }
+        }
+        send(data) {
+          if (this.readyState !== 1 || !this._socket) throw new DOMException("WebSocket is not open", "InvalidStateError");
+          if (data instanceof Blob) {
+            data.arrayBuffer().then(buffer => this._socket?.send(buffer)).catch(() => this._emit("error", new Event("error")));
+            return;
+          }
+          const payload = ArrayBuffer.isView(data)
+            ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+            : data;
+          Promise.resolve(this._socket.send(payload)).catch(() => this._emit("error", new Event("error")));
+        }
+        close(code = 1000, reason = "") {
+          if (this.readyState === 2 || this.readyState === 3) return;
+          this.readyState = 2;
+          this._closed = true;
+          if (!this._socket) {
+            this._finishClose(code, reason, true);
+            return;
+          }
+          Promise.resolve(this._socket.close(code, reason))
+            .then(() => this._finishClose(code, reason, true))
+            .catch(() => this._finishClose(1006, "WebSocket close failed", false));
+        }
       }
-    };
+      VanilliaWispSocket.CONNECTING = 0;
+      VanilliaWispSocket.OPEN = 1;
+      VanilliaWispSocket.CLOSING = 2;
+      VanilliaWispSocket.CLOSED = 3;
+      globalThis.WebSocket = VanilliaWispSocket;
+    } else {
+      globalThis.WebSocket = class extends nativeWebSocket {
+        constructor(url, protocols) {
+          const value = String(url);
+          let next = value;
+          try {
+            const resolved = new URL(value, base);
+            if (/^wss?:$/.test(resolved.protocol)) {
+              const target = resolved.protocol === "wss:" ? "https:" : "http:";
+              const httpTarget = target + "//" + resolved.host + resolved.pathname + resolved.search;
+              next = new URL("/ws?url=" + encodeURIComponent(httpTarget), location.origin).href;
+            }
+          } catch {}
+          super(next, protocols);
+        }
+      };
+    }
   }
   if (globalThis.MessagePort?.prototype?.postMessage) {
     const nativePortPostMessage = globalThis.MessagePort.prototype.postMessage;
