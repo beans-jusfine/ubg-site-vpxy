@@ -1,16 +1,19 @@
-# NERO VanillaPXY Integration
+# NERO VanillaPXY
 
-This repository is the NERO-side integration workspace for VanillaPXY.
+NERO-compatible VanillaPXY integration workspace.
+
+This repository includes source adapted from [Portal-NetworkDev/VanilliaPXY](https://github.com/Portal-NetworkDev/VanilliaPXY), with permission from its owner. VanillaPXY remains the upstream project; this repository does not claim original authorship.
 
 ## Status
 
-- Initial architecture and compatibility review completed.
-- Original upstream source: [Portal-NetworkDev/VanilliaPXY](https://github.com/Portal-NetworkDev/VanilliaPXY).
-- No upstream source files have been copied. The upstream repository currently has no license file or declared license, so redistribution or adaptation must wait for permission or an explicit license from its owner.
-- NERO production is out of scope. Integration testing belongs in `beans-jusfine/ubg-site-dev`.
+- Upstream VanillaPXY v0.4.0 source imported.
+- NERO integration and shared-Wisp compatibility are being implemented.
+- DEV integration only; NERO production is not modified.
 
-See [docs/architecture.md](docs/architecture.md) for the integration plan and the Wisp compatibility boundary.
+## Architecture
 
-## Intended outcome
+See [docs/architecture.md](docs/architecture.md) for backend and Wisp integration details.
 
-NERO should offer VanillaPXY as a selectable browsing engine alongside Scramjet, while preserving Scramjet as the default and retaining NERO's existing Wisp service for transports that use it.
+## Upstream
+
+Original project: https://github.com/Portal-NetworkDev/VanilliaPXY
