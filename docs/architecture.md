@@ -2,12 +2,12 @@
 
 ## Upstream components
 
-VanillaPXY has two distinct backend paths:
+Upstream VanillaPXY contains two backend paths:
 
 1. The HTTP proxy/rewrite backend handles `/vanillia?url=...`, fetches target pages, rewrites HTML/CSS/JavaScript, and handles ordinary WebSocket upgrades at `/ws`.
-2. Its bundled Wisp server handles Wisp protocol upgrades at `/wisp/`.
+2. Upstream can also run a bundled Wisp server at `/wisp/`.
 
-The browser runtime is not a standalone proxy backend. It expects the HTTP backend routes to be available.
+The NERO fork keeps the HTTP backend but removes its own Wisp listener and dependency. The browser runtime is not a standalone proxy backend; it still requires the HTTP backend for page loading and rewriting.
 
 ## Shared NERO Wisp
 
@@ -19,14 +19,14 @@ To share NERO Wisp, the browser runtime uses the `@mercuryworkshop/epoxy-tls` cl
 
 ## Deployment
 
-The VanillaPXY Node backend requires a Node runtime (upstream specifies Node 24.x) and should be deployed separately from static Cloudflare Pages hosting. NERO's frontend can continue to be served from Pages.
+The VanillaPXY Node backend requires a Node runtime (upstream specifies Node 24.x) and is deployed separately from static Cloudflare Pages hosting. NERO's frontend can continue to be served from Pages.
 
 ## Security and compatibility requirements
 
 - Keep private-IP and DNS-rebinding protections enabled for public deployments.
 - Preserve upstream target validation and redirect validation.
 - Keep NERO's Scramjet engine as the default and avoid changing production.
-- Confirm the deployed NERO Wisp service supports Wisp v2 before enabling the adapter in NERO DEV; keep the local `/ws` route as a fallback when no relay URL is supplied.
+- NERO's pinned `@mercuryworkshop/wisp-js` 0.5.2 server supports Wisp v2; the browser-side Epoxy TLS adapter explicitly requests Wisp v2. Keep the `/ws` fallback for standalone/no-relay use.
 - Test cookies, redirects, service workers, workers, WebSockets, streaming responses, login flows, and ChromeOS performance in DEV.
 
 ## Shared Wisp configuration
@@ -43,8 +43,8 @@ The root `render.yaml` describes the Node 24 backend as a free web service in Vi
 
 ## Current DEV deployment
 
-The fork is deployed as a separate Render free web service at `https://nero-vanillia-proxy-dev.onrender.com`. NERO DEV has been updated to use this fork endpoint after the service's first deployment succeeded. The original `nero-vanillia-proxy` service remains untouched and still points to the upstream repository.
+The fork is deployed as a separate Render free web service at `https://nero-vanillia-proxy-dev.onrender.com`. NERO DEV uses this fork endpoint. The original `nero-vanillia-proxy` service remains untouched and still points to the upstream repository.
 
-## Shared-Wisp status
+## Current status
 
-The HTTP proxy backend and the fork deployment are in place, but shared-Wisp transport is not complete yet. The current runtime still sends proxied WebSocket connections to the backend's `/ws` handler, which opens its own upstream WebSocket. The optional `server` query parameter is propagated by the runtime but is not consumed by that handler. Do not describe VanillaPXY as sharing NERO's Wisp server until a compatible TLS-over-Wisp transport replaces that path and is tested.
+The shared-Wisp WebSocket adapter is implemented and the fork is deployed. The adapter still needs real-browser validation with WebSocket echo, Discord, and other real-site flows on ChromeOS before it should be considered fully verified. NERO production remains untouched.
