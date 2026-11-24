@@ -17,3 +17,11 @@ See [docs/architecture.md](docs/architecture.md) for backend and Wisp integratio
 ## Upstream
 
 Original project: https://github.com/Portal-NetworkDev/VanilliaPXY
+
+## Deploying the backend on Render
+
+This repository includes a Render Blueprint at `render.yaml`. It defines the Node 24 web service, uses the existing `/health` endpoint for health checks, and keeps the service on the free plan in the Virginia region.
+
+The existing NERO Render service was originally connected to the upstream repository. To move that service to this fork, create or sync the Blueprint with the existing resource set to **adopt** and review the proposed changes before applying them. Do not create a duplicate service unless the Render plan explicitly shows that the existing service cannot be adopted.
+
+The public backend URL is expected to remain `https://nero-vanillia-proxy.onrender.com`.

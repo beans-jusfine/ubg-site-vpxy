@@ -32,3 +32,7 @@ The VanillaPXY Node backend requires a Node runtime (upstream specifies Node 24.
 ## Next implementation step
 
 Implement a selectable Wisp client adapter for VanillaPXY and make the relay URL configurable from NERO. Keep the existing `/ws` path as a fallback until the shared-Wisp adapter passes tests.
+
+## Render service configuration
+
+The root `render.yaml` describes the Node 24 backend as a free web service in Virginia. It uses `npm install` and `npm start`, and Render health checks use `/health`. The existing NERO service currently points to the upstream repository; adopting it from this fork must be reviewed in Render before applying.

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: nero-vanillia-proxy
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 24.0.0
