@@ -22,6 +22,4 @@ Original project: https://github.com/Portal-NetworkDev/VanilliaPXY
 
 This repository includes a Render Blueprint at `render.yaml`. It defines the Node 24 web service, uses the existing `/health` endpoint for health checks, and keeps the service on the free plan in the Virginia region.
 
-The existing NERO Render service was originally connected to the upstream repository. To move that service to this fork, create or sync the Blueprint with the existing resource set to **adopt** and review the proposed changes before applying them. Do not create a duplicate service unless the Render plan explicitly shows that the existing service cannot be adopted.
-
-NERO DEV now points to the fork deployment at `https://nero-vanillia-proxy-dev.onrender.com`. The original `https://nero-vanillia-proxy.onrender.com` service remains untouched and continues to use the upstream repository.
+NERO DEV now uses a separate fork deployment at `https://nero-vanillia-proxy-dev.onrender.com`. The original `https://nero-vanillia-proxy.onrender.com` service remains untouched and continues to use the upstream repository. The Blueprint is named to manage the fork deployment, not the original service.

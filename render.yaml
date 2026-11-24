@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nero-vanillia-proxy
+    name: nero-vanillia-proxy-dev
     runtime: node
     plan: free
     region: virginia
