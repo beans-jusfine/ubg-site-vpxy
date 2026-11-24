@@ -36,3 +36,11 @@ Implement a selectable Wisp client adapter for VanillaPXY and make the relay URL
 ## Render service configuration
 
 The root `render.yaml` describes the Node 24 backend as a free web service in Virginia. It uses `npm install` and `npm start`, and Render health checks use `/health`. The existing NERO service currently points to the upstream repository; adopting it from this fork must be reviewed in Render before applying.
+
+## Current DEV deployment
+
+The fork is deployed as a separate Render free web service at `https://nero-vanillia-proxy-dev.onrender.com`. NERO DEV has been updated to use this fork endpoint after the service's first deployment succeeded. The original `nero-vanillia-proxy` service remains untouched and still points to the upstream repository.
+
+## Shared-Wisp status
+
+The HTTP proxy backend and the fork deployment are in place, but shared-Wisp transport is not complete yet. The current runtime still sends proxied WebSocket connections to the backend's `/ws` handler, which opens its own upstream WebSocket. The optional `server` query parameter is propagated by the runtime but is not consumed by that handler. Do not describe VanillaPXY as sharing NERO's Wisp server until a compatible TLS-over-Wisp transport replaces that path and is tested.

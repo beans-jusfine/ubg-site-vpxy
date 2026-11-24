@@ -24,4 +24,4 @@ This repository includes a Render Blueprint at `render.yaml`. It defines the Nod
 
 The existing NERO Render service was originally connected to the upstream repository. To move that service to this fork, create or sync the Blueprint with the existing resource set to **adopt** and review the proposed changes before applying them. Do not create a duplicate service unless the Render plan explicitly shows that the existing service cannot be adopted.
 
-The public backend URL is expected to remain `https://nero-vanillia-proxy.onrender.com`.
+NERO DEV now points to the fork deployment at `https://nero-vanillia-proxy-dev.onrender.com`. The original `https://nero-vanillia-proxy.onrender.com` service remains untouched and continues to use the upstream repository.
