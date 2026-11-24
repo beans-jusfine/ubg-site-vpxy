@@ -15,7 +15,7 @@ NERO's existing Wisp service is `wss://ubg-site-wisp.onrender.com/wisp/`. It is 
 
 VanillaPXY currently wraps target WebSockets by opening `/ws?url=...` against its own HTTP backend. Its runtime forwards an optional `server` query parameter, but the upstream HTTP server does not use that parameter to route `/ws` to a remote Wisp server. Merely adding the Wisp URL to the query therefore does not make VanillaPXY use NERO's Wisp server.
 
-To share NERO Wisp, the browser runtime uses the `@mercuryworkshop/epoxy-tls` client. It loads the bundled client from `/epoxy/epoxy-bundled.js`, connects to the Wisp URL passed in the `server` query parameter, and routes proxied WebSocket connections through TLS-over-Wisp. The Node HTTP rewrite/fetch backend remains responsible for initial page loads and ordinary HTTP requests.
+To share NERO Wisp, the browser runtime uses the `@mercuryworkshop/epoxy-tls` client. It loads the bundled client from `/epoxy/epoxy-bundled.js`, connects to the Wisp URL passed in the `server` query parameter, and routes proxied WebSocket connections through TLS-over-Wisp. The Node HTTP rewrite/fetch backend remains responsible for initial page loads and ordinary HTTP requests. It retains the legacy `/ws` fallback for cases where no shared Wisp URL is supplied, but its own `/wisp/` listener is removed to avoid maintaining a second relay.
 
 ## Deployment
 
@@ -28,6 +28,10 @@ The VanillaPXY Node backend requires a Node runtime (upstream specifies Node 24.
 - Keep NERO's Scramjet engine as the default and avoid changing production.
 - Confirm the deployed NERO Wisp service supports Wisp v2 before enabling the adapter in NERO DEV; keep the local `/ws` route as a fallback when no relay URL is supplied.
 - Test cookies, redirects, service workers, workers, WebSockets, streaming responses, login flows, and ChromeOS performance in DEV.
+
+## Shared Wisp configuration
+
+NERO DEV's single Wisp setting is the source of truth. `makeVanilliaUrl()` passes the same `getWisp()` value used by Scramjet through the `server` query parameter. The browser runtime requests Wisp v2 through Epoxy TLS, matching the existing NERO Wisp service's `@mercuryworkshop/wisp-js` 0.5.2 server (which supports Wisp v2 and v1 clients). The fork does not host its own Wisp listener.
 
 ## Adapter implementation status
 

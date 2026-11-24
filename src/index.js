@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { request } from "undici";
 import { WebSocketServer, WebSocket } from "ws";
-import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { validateTarget, validateRedirect } from "./policy.js";
 import { resolveProxyTarget } from "./proxy-target.js";
 import { requestHeaders, responseHeaders } from "./headers.js";
@@ -24,10 +23,7 @@ const rewriteEnabled = process.env.REWRITE !== "false";
 const endpoint = process.env.PROXY_ENDPOINT || "/vanillia?url=";
 const epoxyBundlePath = fileURLToPath(import.meta.resolve("@mercuryworkshop/epoxy-tls/epoxy-bundled"));
 const epoxyBundle = await readFile(epoxyBundlePath);
-const wispPath = process.env.WISP_PATH || "/wisp/";
 
-wisp.options.allow_private_ips = allowPrivate;
-wisp.options.allow_loopback_ips = allowPrivate;
 
 const server = http.createServer({ maxHeaderSize }, handleRequest);
 const wss = new WebSocketServer({ noServer: true, maxPayload: maxWebSocketPayload });
@@ -294,11 +290,6 @@ async function handleRequest(req, res) {
 
 server.on("upgrade", (req, socket, head) => {
   const pathname = new URL(req.url, "http://localhost").pathname;
-  if (pathname === wispPath) {
-    req.url = wispPath;
-    wisp.routeRequest(req, socket, head);
-    return;
-  }
   if (pathname !== "/ws") return socket.destroy();
   handleWebSocket(req, socket, head);
 });
