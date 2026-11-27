@@ -50,10 +50,15 @@ function canRewrite(headers) {
   return type.includes("text/html") || type.includes("text/css") || type.includes("javascript");
 }
 function functionPrefix(request) {
-  const parts = new URL(request.url).pathname.split("/");
-  return parts[1] === "functions" && parts[2] === "v1" && parts[3]
-    ? `/${parts[1]}/${parts[2]}/${parts[3]}`
-    : "";
+  const parts = new URL(request.url).pathname.split("/").filter(Boolean);
+  const functionIndex = parts.findIndex((part, index) =>
+    part === "functions" && parts[index + 1] === "v1" && parts[index + 2] === "nero-vpxy"
+  );
+  if (functionIndex >= 0) return "/" + parts.slice(0, functionIndex + 3).join("/");
+  // Some Edge Runtime versions expose the function slug without the gateway prefix.
+  if (parts[0] === "nero-vpxy") return "/nero-vpxy";
+  // Others expose only the suffix path, e.g. /health or /vanillia.
+  return "";
 }
 function proxyEndpoint(request) {
   const url = new URL(request.url);
