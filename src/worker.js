@@ -146,7 +146,21 @@ export async function handleWorkerRequest(request, env = {}) {
   const url = new URL(request.url);
   const prefix = functionPrefix(request);
   const routePath = url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname;
-  if (routePath.endsWith("/health")) return new Response(JSON.stringify({ status: "ok", version: "0.3.8", runtime: "edge" }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }});
+  if (routePath.endsWith("/health")) {
+    const origin = request.headers.get("origin");
+    const allowedOrigins = (env.ALLOWED_ORIGINS || "https://ubg-site-dev.pages.dev").split(",").map(value => value.trim()).filter(Boolean);
+    const headers = new Headers({
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "vary": "Origin",
+      "access-control-allow-methods": "GET, HEAD, OPTIONS",
+      "access-control-allow-headers": "content-type"
+    });
+    if (origin && (origin === url.origin || allowedOrigins.includes(origin))) {
+      headers.set("access-control-allow-origin", origin);
+    }
+    return new Response(JSON.stringify({ status: "ok", version: "0.3.9", runtime: "node" }), { headers });
+  }
   if (url.pathname === prefix + "/robots.txt") return new Response("User-agent: *\nDisallow: /\n", { headers: { "content-type": "text/plain; charset=utf-8" }});
   if (url.pathname === prefix + "/service-worker.js") return serviceWorkerResponse(prefix, url.searchParams.get("server") || "");
   if (url.pathname === prefix + "/epoxy/epoxy-bundled.js") {
