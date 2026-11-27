@@ -61,8 +61,7 @@ function functionPrefix(request) {
   return "";
 }
 function publicFunctionPrefix(request) {
-  const prefix = functionPrefix(request);
-  return prefix.startsWith("/functions/v1/") ? prefix : "/functions/v1/nero-vpxy";
+  return functionPrefix(request);
 }
 function proxyEndpoint(request) {
   const url = new URL(request.url);
