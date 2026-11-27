@@ -60,9 +60,14 @@ function functionPrefix(request) {
   // Others expose only the suffix path, e.g. /health or /vanillia.
   return "";
 }
+function publicFunctionPrefix(request) {
+  const prefix = functionPrefix(request);
+  return prefix.startsWith("/functions/v1/") ? prefix : "/functions/v1/nero-vpxy";
+}
 function proxyEndpoint(request) {
   const url = new URL(request.url);
-  const destination = new URL(functionPrefix(request) + "/vanillia", url.origin);
+  url.protocol = "https:";
+  const destination = new URL(publicFunctionPrefix(request) + "/vanillia", url.origin);
   const relay = url.searchParams.get("server");
   if (relay) destination.searchParams.set("server", relay);
   destination.searchParams.set("url", "");
@@ -116,14 +121,19 @@ async function proxyRequest(request, target, redirects = 0) {
     const type = String(upstream.headers.get("content-type") || "").toLowerCase();
     const source = new TextDecoder().decode(body);
     const absoluteEndpoint = proxyEndpoint(request);
-    const iconUrl = new URL(functionPrefix(request) + "/favicon", new URL(request.url).origin);
+    const publicOrigin = new URL(request.url);
+    publicOrigin.protocol = "https:";
+    const iconUrl = new URL(publicFunctionPrefix(request) + "/favicon", publicOrigin.origin);
     iconUrl.searchParams.set("url", target.href);
     const iconHref = type.includes("text/html") ? iconUrl.href : "";
     const rewritten = type.includes("text/css")
       ? rewriteCss(source, target.href, absoluteEndpoint)
       : type.includes("javascript")
         ? rewriteWorkerScript(source, target.href, absoluteEndpoint)
-        : rewriteHtml(source, target.href, absoluteEndpoint, runtimeScript(absoluteEndpoint, functionPrefix(request) + "/service-worker.js", target.href) + adblockerScript(), iconHref);
+        : rewriteHtml(source, target.href, absoluteEndpoint, runtimeScript(absoluteEndpoint, publicFunctionPrefix(request) + "/service-worker.js", target.href) + adblockerScript(), iconHref);
+    if (type.includes("text/html")) headersOut["content-type"] = "text/html; charset=utf-8";
+    else if (type.includes("text/css")) headersOut["content-type"] = "text/css; charset=utf-8";
+    else if (type.includes("javascript")) headersOut["content-type"] = "text/javascript; charset=utf-8";
     delete headersOut["content-length"];
     delete headersOut["content-encoding"];
     return new Response(rewritten, { status: upstream.status, headers: responseHeadersInit(headersOut) });
