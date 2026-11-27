@@ -29,3 +29,16 @@ NERO DEV has one Wisp setting shared by Scramjet and VanilliaPXY. The frontend p
 This repository includes a Render Blueprint at `render.yaml`. It defines the Node 24 web service, uses the existing `/health` endpoint for health checks, and keeps the service on the free plan in the Virginia region.
 
 NERO DEV now uses a separate fork deployment at `https://nero-vanillia-proxy-dev.onrender.com`. The original `https://nero-vanillia-proxy.onrender.com` service remains untouched and continues to use the upstream repository. The Blueprint is named to manage the fork deployment, not the original service.
+
+
+## Cloudflare Workers migration (DEV)
+
+An isolated Cloudflare Workers entrypoint is available at `src/worker.js` and `wrangler.toml`. It retains the existing rewriting, cookie normalization, redirect validation, and streams non-rewritten responses.
+
+Before deploying:
+- Set `ALLOWED_ORIGINS` to the exact NERO DEV origin(s), comma-separated.
+- A rate-limit binding caps proxy, favicon, and icon requests at 600/minute per client IP per Cloudflare location (approximate, not globally strict).
+- Rewritten HTML/CSS/JavaScript responses are capped at 16 MiB.
+- Hostname preflight checks reject DNS answers containing non-public IPv4/IPv6 addresses. The actual request still uses Workers `fetch()` DNS resolution, so this check is not a cryptographic DNS pin and should not be represented as a complete DNS-rebinding guarantee.
+- Favicon redirects are not followed.
+- Deploy and test separately. Do not switch NERO DEV until cookies, redirects, POST forms, service workers, workers, streaming, and Discord have been tested. The Node backend remains unchanged as fallback.

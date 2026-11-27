@@ -8,7 +8,7 @@ import { adblockerScript } from "./adblocker.js";
 
 const timeout = 30000;
 const maxRedirects = 8;
-const maxRewriteSize = 256 * 1024 * 1024;
+const maxRewriteSize = 16 * 1024 * 1024;
 const endpoint = "/vanillia?url=";
 
 function errorResponse(status, message) {
@@ -107,17 +107,33 @@ async function proxyRequest(request, target, redirects = 0) {
     clearTimeout(timer);
   }
 }
-export async function handleWorkerRequest(request) {
+export async function handleWorkerRequest(request, env = {}) {
   const url = new URL(request.url);
   if (url.pathname === "/health") return new Response(JSON.stringify({ status: "ok", version: "0.3.8", runtime: "cloudflare" }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }});
   if (url.pathname === "/robots.txt") return new Response("User-agent: *\nDisallow: /\n", { headers: { "content-type": "text/plain; charset=utf-8" }});
   if (url.pathname === "/service-worker.js") return serviceWorkerResponse();
+  if (request.method !== "OPTIONS" && ["/vanillia", "/favicon", "/api/icon"].includes(url.pathname)) {
+    const origin = request.headers.get("Origin");
+    const referer = request.headers.get("Referer");
+    const allowedOrigins = (env.ALLOWED_ORIGINS || "https://beans.work.gd").split(",").map(value => value.trim()).filter(Boolean);
+    if (origin && origin !== url.origin && !allowedOrigins.includes(origin)) return errorResponse(403, "Origin not allowed");
+    if (!origin && referer) {
+      try { const refOrigin = new URL(referer).origin; if (refOrigin !== url.origin && !allowedOrigins.includes(refOrigin)) return errorResponse(403, "Origin not allowed"); }
+      catch { return errorResponse(403, "Origin not allowed"); }
+    }
+    if (env.RATE_LIMITER) {
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const result = await env.RATE_LIMITER.limit({ key: ip });
+      if (!result.success) return errorResponse(429, "Proxy request limit reached. Try again shortly.");
+    }
+  }
   if (url.pathname === "/favicon") {
     const rawTarget = url.searchParams.get("url") || (url.searchParams.has("q") ? `https://www.google.com/search?q=${encodeURIComponent(url.searchParams.get("q") || "")}` : null);
   const target = await validateTarget(rawTarget);
     if (!target) return errorResponse(403, "Target is not allowed");
     try {
-      const response = await fetch(new URL("/favicon.ico", target.origin), { redirect: "follow", signal: AbortSignal.timeout(timeout) });
+      const response = await fetch(new URL("/favicon.ico", target.origin), { redirect: "manual", signal: AbortSignal.timeout(timeout) });
+      if (response.status >= 300 && response.status < 400) return errorResponse(404, "Website icon not found");
       if (!response.ok) return errorResponse(404, "Website icon not found");
       const headers = new Headers({ "cache-control": "public, max-age=3600", "x-robots-tag": "noindex, nofollow, noarchive", "access-control-allow-origin": "*" });
       const type = response.headers.get("content-type");
