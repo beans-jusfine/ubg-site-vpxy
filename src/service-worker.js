@@ -1,30 +1,21 @@
-const workerScript = `
-const workerUrl = new URL(self.location.href);
-const server = workerUrl.searchParams.get("server") || "";
-const endpoint = server
-  ? "/vanillia?server=" + encodeURIComponent(server) + "&url="
-  : "/vanillia?url=";
-const target = workerUrl.searchParams.get("target");
-
+export function serviceWorkerResponse(basePath = "", relayServer = "") {
+  const endpoint = relayServer
+    ? `${basePath}/vanillia?server=${encodeURIComponent(relayServer)}&url=`
+    : `${basePath}/vanillia?url=`;
+  const internalPaths = [
+    "/service-worker.js", "/favicon", "/api/icon", "/health", "/robots.txt", "/vanillia"
+  ].map(path => basePath + path);
+  const workerScript = `
+const endpoint = ${JSON.stringify(endpoint)};
+const target = new URL(self.location.href).searchParams.get("target");
+const internalPaths = new Set(${JSON.stringify(internalPaths)});
 self.addEventListener("install", event => event.waitUntil(self.skipWaiting()));
 self.addEventListener("activate", event => event.waitUntil(self.clients.claim()));
-
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (!target || !/^(?:GET|HEAD)$/i.test(request.method)) return;
-
   const url = new URL(request.url);
-  const internalPaths = new Set([
-    "/service-worker.js",
-    "/favicon",
-    "/api/icon",
-    "/health",
-    "/robots.txt",
-    "/vanillia"
-  ]);
-
   if (url.origin === self.location.origin && internalPaths.has(url.pathname)) return;
-
   let upstream;
   try {
     const base = new URL(target);
@@ -40,22 +31,11 @@ self.addEventListener("fetch", event => {
       if (subdomain && !subdomain.includes(".")) upstreamUrl.hostname = subdomain + ".roblox.com";
     }
     upstream = upstreamUrl.href;
-  } catch {
-    return;
-  }
-
-  const proxied = endpoint + encodeURIComponent(upstream);
-  event.respondWith(fetch(new Request(proxied, request)));
-});
-`;
-
-export function serviceWorkerResponse() {
+  } catch { return; }
+  event.respondWith(fetch(new Request(endpoint + encodeURIComponent(upstream), request)));
+});`;
   return new Response(workerScript, {
     status: 200,
-    headers: {
-      "content-type": "application/javascript; charset=utf-8",
-      "cache-control": "no-store",
-      "service-worker-allowed": "/"
-    }
+    headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store", "service-worker-allowed": "/" }
   });
 }

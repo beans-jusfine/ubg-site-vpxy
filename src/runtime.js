@@ -50,6 +50,7 @@ const runtimeSource = String.raw`(() => {
     : new URL(configuredEndpoint.pathname + configuredEndpoint.search, location.origin).href;
   const workerEndpoint = globalThis.__VANILLIAPXY_SW__ || "/service-worker.js";
   const relayServer = new URL(location.href).searchParams.get("server") || "";
+  const proxyBasePath = configuredEndpoint.pathname.replace(/\/vanillia$/, "");
   const blobWorkerBootstrap = globalThis.__VANILLIAPXY_BLOB_BOOTSTRAP__ || "";
   const navigateDirectRedirect = value => {
     if (typeof value !== "string" || !value.trim()) return value;
@@ -659,7 +660,7 @@ const runtimeSource = String.raw`(() => {
       let relayClientPromise = null;
       const getRelayClient = () => {
         if (!relayClientPromise) {
-          relayClientPromise = import(new URL("/epoxy/epoxy-bundled.js", location.origin).href).then(async epoxy => {
+          relayClientPromise = import(new URL(proxyBasePath + "/epoxy/epoxy-bundled.js", location.origin).href).then(async epoxy => {
             if (typeof epoxy.default === "function") await epoxy.default();
             const options = new epoxy.EpoxyClientOptions();
             options.user_agent = navigator.userAgent;
